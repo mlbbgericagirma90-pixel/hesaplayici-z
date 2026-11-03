@@ -148,14 +148,14 @@ h2 { font: 700 15px/1 var(--font-display); letter-spacing: .14em; text-transform
   </header>
 
   <div class="tabs" role="tablist" aria-label="Sistem seç">
-    <button class="tab" role="tab" id="tab-pet" data-key="pet" aria-selected="true">Pet Hesapla</button>
-    <button class="tab" role="tab" id="tab-mount" data-key="mount" aria-selected="false">Binek Hesapla</button>
-    <button class="tab" role="tab" id="tab-skill" data-key="skill" aria-selected="false">Yetenek Hesapla</button>
+    <button class="tab" role="tab" id="tab-pet" data-key="pet" aria-selected="true">Pet</button>
+    <button class="tab" role="tab" id="tab-mount" data-key="mount" aria-selected="false">Binek</button>
+    <button class="tab" role="tab" id="tab-skill" data-key="skill" aria-selected="false">Yetenek</button>
   </div>
 
   <div id="forms"></div>
-  <section class="card" id="result" aria-live="polite"></section>
-  <p class="note">Sürüm 6</p>
+  <section class="card" id="result" aria-live="polite" hidden></section>
+  <p class="note">Sürüm 8</p>
 </div>
 
 <script>
@@ -163,25 +163,25 @@ const D = {"skill":{"req":[2,4,6,8,10,12,14,16,18,20,30,40,50,60,80,100,110,110,
 
 const CFG = {
   pet: {
-    unit: 'yumurta kabuğu', extra: true,
+    unit: 'kabuk', label: 'Kabuk', extra: true,
     costLabel: 'Çağırma maliyeti', costHint: 'Tek çağırma için, pet maliyeti sabit',
     costOpts: [100], base: 100,
     extraHint: '%5\'er adımlarla, en fazla %50',
-    def: { level: '45', progress: '0', star: '0', owned: '60000', cost: '100', extra: '30' }
+    def: { level: '', progress: '', star: '0', owned: '', cost: '100', extra: '0' }
   },
   mount: {
-    unit: 'bilet', extra: true,
+    unit: 'kurma kolu', label: 'Kurma kolu', extra: true,
     costLabel: 'Çağırma maliyeti', costHint: 'Tek çağırma için, indirim %5\'er adımlarla en fazla %25',
     costOpts: [50, 47.5, 45, 42.5, 40, 37.5], base: 50,
     extraHint: '%5\'er adımlarla, en fazla %50',
-    def: { level: '30', progress: '0', star: '0', owned: '25000', cost: '37.5', extra: '20' }
+    def: { level: '', progress: '', star: '0', owned: '', cost: '50', extra: '0' }
   },
   skill: {
-    unit: 'bilet', extra: false,
+    unit: 'bilet', label: 'Bilet', extra: false,
     costLabel: "5'li çağırma maliyeti", costHint: "İndirim %5'er adımlarla en fazla %25",
     costOpts: [200, 190, 180, 170, 160, 150], base: 200,
     extraHint: '',
-    def: { level: '60', progress: '0', star: '0', owned: '120000', cost: '150', extra: '0' }
+    def: { level: '', progress: '', star: '0', owned: '', cost: '200', extra: '0' }
   }
 };
 const RAR = [
@@ -220,24 +220,24 @@ function formHtml(key) {
   return `
   <form class="card" id="form-${key}" data-key="${key}" novalidate hidden>
     <div class="f">
-      <label for="${id('level')}">Mevcut seviye</label>
-      <input type="text" inputmode="numeric" maxlength="3" id="${id('level')}" value="${d.level}" autocomplete="off">
+      <label for="${id('level')}">Level</label>
+      <input type="text" inputmode="numeric" maxlength="3" id="${id('level')}" value="${d.level}" placeholder="0" autocomplete="off">
       <span class="hint">1 ile 100 arası</span>
     </div>
     <div class="f">
-      <label for="${id('progress')}">O seviyedeki puanın</label>
-      <input type="text" inputmode="numeric" maxlength="5" id="${id('progress')}" value="${d.progress}" autocomplete="off">
+      <label for="${id('progress')}">Puan</label>
+      <input type="text" inputmode="numeric" maxlength="5" id="${id('progress')}" value="${d.progress}" placeholder="0" autocomplete="off">
       <span class="hint" id="${id('need')}"></span>
     </div>
     <div class="f">
-      <label for="${id('star')}">Şu anki yıldız</label>
+      <label for="${id('star')}">Yıldız</label>
       <select id="${id('star')}">
         <option value="0">Yıldız yok</option><option value="1">1 yıldız</option><option value="2">2 yıldız</option><option value="3">3 yıldız</option>
       </select>
     </div>
     <div class="f">
-      <label for="${id('owned')}">Elindeki ${c.unit}</label>
-      <input type="text" inputmode="numeric" maxlength="9" id="${id('owned')}" value="${d.owned}" autocomplete="off">
+      <label for="${id('owned')}">${c.label}</label>
+      <input type="text" inputmode="numeric" maxlength="9" id="${id('owned')}" value="${d.owned}" placeholder="0" autocomplete="off">
     </div>
     <div class="f ${c.extra ? '' : 'wide'}">
       <label for="${id('cost')}">${c.costLabel}</label>
@@ -259,12 +259,12 @@ function starSvg(cls) {
 
 function read(key) {
   const c = CFG[key], g = n => document.getElementById(key + '-' + n);
-  const L = parseNum(g('level').value), pr = parseNum(g('progress').value);
-  const owned = parseNum(g('owned').value), cost = parseFloat(g('cost').value);
+  const L = parseNum(g('level').value), pr = g('progress').value.trim() === '' ? 0 : parseNum(g('progress').value);
+  const owned = g('owned').value.trim() === '' ? 0 : parseNum(g('owned').value), cost = parseFloat(g('cost').value);
   const star = parseInt(g('star').value, 10);
   const extra = c.extra ? parseInt(g('extra').value, 10) : 0;
   const use = c.extra ? g('usechance').checked : false;
-  if (!Number.isInteger(L) || L < 1 || L > 100) return { error: 'Seviye 1 ile 100 arasında bir tam sayı olmalı.' };
+  if (!Number.isInteger(L) || L < 1 || L > 100) return { error: 'Level 1 ile 100 arasında bir tam sayı olmalı.' };
   const req = L < 100 ? D[key].req[L - 1] : 0;
   if (L < 100 && (!Number.isInteger(pr) || pr < 0 || pr >= req))
     return { error: `${L}. seviyede puanın 0 ile ${req - 1} arasında olmalı. Bu seviye ${req} çağırma istiyor.` };
@@ -314,7 +314,6 @@ function oddsBlock(title, p) {
   return `<div class="odd"><div class="t"><span>${title}</span></div><div class="bar" role="img" aria-label="${title} nadirlik şansları">${bar}</div><ul class="legend">${li}</ul></div>`;
 }
 
-let example = { pet: true, mount: true, skill: true };
 
 function render(key, v) {
   const c = CFG[key], r = calc(key, v), out = document.getElementById('result');
@@ -354,10 +353,11 @@ function render(key, v) {
   }
 
   const odds = oddsBlock(`Şu anki seviyede (${v.L}) şanslar`, D[key].prob[v.L - 1]) +
-    oddsBlock(`Yükseliş sonrası seviyede (${r.afterLvl}) şanslar`, D[key].prob[r.afterLvl - 1]);
+    (r.need > 0 && r.missing > 0
+      ? oddsBlock(`Mevcut kaynakla ulaşacağın seviyede (${r.lvl}${chance ? ', tahmini' : ''}) şanslar`, D[key].prob[r.lvl - 1])
+      : oddsBlock(`Yükseliş sonrası seviyede (${r.afterLvl}) şanslar`, D[key].prob[r.afterLvl - 1]));
 
   out.innerHTML = `
-    ${example[key] ? '<span class="chip">Örnek değerlerle hesaplandı. Kendi değerlerini yazıp Hesapla\'ya bas.</span>' : ''}
     ${status}
     <dl class="rows">${rows}${roundRow}</dl>
     <div class="asc"><h2>Yükseliş sonrası</h2>${asc}</div>
@@ -376,7 +376,7 @@ function run(key, user) {
   const v = read(key);
   if (v.error) { err.textContent = v.error; err.hidden = false; return; }
   err.hidden = true;
-  if (user) example[key] = false;
+  document.getElementById('result').hidden = false;
   try { render(key, v); } catch (e) { err.textContent = 'Hesaplama hatası: ' + e.message; err.hidden = false; return; }
   if (user) {
     const b = document.getElementById(key + '-go');
@@ -392,7 +392,7 @@ function show(key) {
     document.getElementById('form-' + k).hidden = k !== key;
     document.getElementById('tab-' + k).setAttribute('aria-selected', k === key ? 'true' : 'false');
   }
-  run(key, false);
+  const res = document.getElementById('result'); res.hidden = true; res.innerHTML = '';
 }
 
 document.getElementById('forms').innerHTML = Object.keys(CFG).map(formHtml).join('');

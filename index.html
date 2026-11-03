@@ -1,4 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
 <title>Forge Master Yükseliş Hesaplayıcı</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -93,6 +100,7 @@ input:disabled, select:disabled { opacity: .55; }
 button.go {
   grid-column: 1 / -1; height: 52px; border: 0; border-radius: 6px; cursor: pointer;
   background: var(--accent); color: var(--accent-fg); font: 700 22px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 button.go:active { transform: translateY(1px); }
 
@@ -147,6 +155,7 @@ h2 { font: 700 15px/1 var(--font-display); letter-spacing: .14em; text-transform
 
   <div id="forms"></div>
   <section class="card" id="result" aria-live="polite"></section>
+  <p class="note">Sürüm 6</p>
 </div>
 
 <script>
@@ -240,7 +249,7 @@ function formHtml(key) {
     </div>
     ${extra}
     <p class="err" role="alert" id="${id('err')}" hidden></p>
-    <button type="submit" class="go">Hesapla</button>
+    <button type="button" class="go" id="${id('go')}">Hesapla</button>
   </form>`;
 }
 
@@ -345,7 +354,7 @@ function render(key, v) {
   }
 
   const odds = oddsBlock(`Şu anki seviyede (${v.L}) şanslar`, D[key].prob[v.L - 1]) +
-    (v.L < 100 ? oddsBlock('100. seviyede şanslar', D[key].prob[99]) : '');
+    oddsBlock(`Yükseliş sonrası seviyede (${r.afterLvl}) şanslar`, D[key].prob[r.afterLvl - 1]);
 
   out.innerHTML = `
     ${example[key] ? '<span class="chip">Örnek değerlerle hesaplandı. Kendi değerlerini yazıp Hesapla\'ya bas.</span>' : ''}
@@ -368,7 +377,12 @@ function run(key, user) {
   if (v.error) { err.textContent = v.error; err.hidden = false; return; }
   err.hidden = true;
   if (user) example[key] = false;
-  render(key, v);
+  try { render(key, v); } catch (e) { err.textContent = 'Hesaplama hatası: ' + e.message; err.hidden = false; return; }
+  if (user) {
+    const b = document.getElementById(key + '-go');
+    b.textContent = 'Hesaplandı';
+    setTimeout(() => { b.textContent = 'Hesapla'; }, 1200);
+  }
   if (user && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   else if (user) document.getElementById('result').scrollIntoView({ block: 'start' });
 }
@@ -385,6 +399,7 @@ document.getElementById('forms').innerHTML = Object.keys(CFG).map(formHtml).join
 for (const k in CFG) {
   const f = document.getElementById('form-' + k);
   f.addEventListener('submit', e => { e.preventDefault(); run(k, true); });
+  document.getElementById(k + '-go').addEventListener('click', () => run(k, true));
   const lvEl = f.querySelector('#' + k + '-level'), prEl = f.querySelector('#' + k + '-progress'), owEl = f.querySelector('#' + k + '-owned');
   // Yazarken sınır uygula: sadece rakam, seviye en fazla 100, puan seviyenin istediğinden küçük
   const clampProgress = () => {
@@ -396,13 +411,14 @@ for (const k in CFG) {
       if (parseInt(prEl.value, 10) > max) prEl.value = String(max);
     }
   };
+  const digits = el => { const s = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); if (s !== el.value) el.value = s; };
   lvEl.addEventListener('input', () => {
-    lvEl.value = lvEl.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    digits(lvEl);
     if (parseInt(lvEl.value, 10) > 100) lvEl.value = '100';
     updateNeed(k); clampProgress();
   });
-  prEl.addEventListener('input', () => { prEl.value = prEl.value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); clampProgress(); });
-  owEl.addEventListener('input', () => { owEl.value = owEl.value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); });
+  prEl.addEventListener('input', () => { digits(prEl); clampProgress(); });
+  owEl.addEventListener('input', () => digits(owEl));
   clampProgress();
   const ex = f.querySelector('#' + k + '-usechance');
   if (ex) ex.addEventListener('change', () => { document.getElementById(k + '-extra').disabled = !ex.checked; });
@@ -412,4 +428,5 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 show('pet');
 </script>
 
-</body></html>
+</body>
+</html>
